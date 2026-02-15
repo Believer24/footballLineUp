@@ -16,6 +16,35 @@ const pool = mysql.createPool({
   connectionLimit: 10,
 });
 
+// ============ 登录 API ============
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ success: false, error: '请输入用户名和密码' });
+    }
+    const [rows] = await pool.query(
+      'SELECT id, username, display_name, role FROM users WHERE username = ? AND password = ?',
+      [username, password]
+    );
+    if (rows.length === 0) {
+      return res.status(401).json({ success: false, error: '用户名或密码错误' });
+    }
+    const user = rows[0];
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        username: user.username,
+        displayName: user.display_name,
+        role: user.role,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ============ 球员 API ============
 // 获取所有球员
 app.get('/api/players', async (req, res) => {
@@ -65,14 +94,20 @@ app.delete('/api/players/:id', async (req, res) => {
 // 获取所有比赛
 app.get('/api/matches', async (req, res) => {
   try {
-    const [rows] = await pool.query(`
+    const { date } = req.query;
+    let query = `
       SELECT m.*, 
         COUNT(DISTINCT r.player_id) as registered_count
       FROM matches m
       LEFT JOIN match_registrations r ON m.id = r.match_id
-      GROUP BY m.id
-      ORDER BY m.match_date DESC, m.match_time DESC
-    `);
+    `;
+    const params = [];
+    if (date) {
+      query += ' WHERE DATE(m.match_date) = ? ';
+      params.push(date);
+    }
+    query += ' GROUP BY m.id ORDER BY m.created_at DESC';
+    const [rows] = await pool.query(query, params);
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -86,7 +121,7 @@ app.get('/api/matches/:id', async (req, res) => {
     if (!match) return res.status(404).json({ error: 'Match not found' });
 
     const [registrations] = await pool.query(`
-      SELECT r.*, p.name, p.preferred_position, p.rating
+      SELECT r.*, p.name as player_name, p.avatar, p.preferred_position, p.rating
       FROM match_registrations r
       JOIN players p ON r.player_id = p.id
       WHERE r.match_id = ?
@@ -221,11 +256,17 @@ app.post('/api/matches/:id/import-players', async (req, res) => {
       // Register to match (ignore duplicate)
       try {
         await pool.query(
-          'INSERT INTO match_registrations (match_id, player_id) VALUES (?, ?)',
-          [matchId, playerId]
+          'INSERT INTO match_registrations (match_id, player_id, position_index, is_starter) VALUES (?, ?, ?, ?)',
+          [matchId, playerId, p.position_index !== undefined ? p.position_index : null, p.is_starter ? 1 : 0]
         );
       } catch (e) {
-        // Ignore duplicate registration
+        // Ignore duplicate registration - update position if already exists
+        if (e.code === 'ER_DUP_ENTRY') {
+          await pool.query(
+            'UPDATE match_registrations SET position_index = ?, is_starter = ? WHERE match_id = ? AND player_id = ?',
+            [p.position_index !== undefined ? p.position_index : null, p.is_starter ? 1 : 0, matchId, playerId]
+          );
+        }
       }
 
       results.push({ name: p.name, playerId });

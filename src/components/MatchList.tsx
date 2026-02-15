@@ -10,7 +10,11 @@ import type { MatchData } from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { canEdit } from '../data/users';
 
-export const MatchList: React.FC = () => {
+interface MatchListProps {
+  onSelectMatch?: (id: number) => void;
+}
+
+export const MatchList: React.FC<MatchListProps> = ({ onSelectMatch }) => {
   const currentUser = useAuthStore((s) => s.currentUser);
   const isEditable = currentUser ? canEdit(currentUser.role) : false;
 
@@ -18,10 +22,11 @@ export const MatchList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [filterDate, setFilterDate] = useState('');
   const [newMatch, setNewMatch] = useState({ match_date: '', match_time: '', location: '', format: '5v5' });
-  const loadMatches = async () => {
+  const loadMatches = async (date?: string) => {
     try {
-      const data = await api.getMatches();
+      const data = await api.getMatches(date || undefined);
       setMatches(data);
       setError('');
     } catch (e) {
@@ -78,6 +83,25 @@ export const MatchList: React.FC = () => {
         </Button>
       </Box>
 
+      {/* 日期筛选 */}
+      <Stack direction="row" spacing={2} sx={{ mb: 2 }} alignItems="center">
+        <TextField
+          label="按比赛日期筛选"
+          type="date"
+          size="small"
+          InputLabelProps={{ shrink: true }}
+          value={filterDate}
+          onChange={(e) => setFilterDate(e.target.value)}
+          sx={{ width: 200 }}
+        />
+        <Button variant="outlined" size="small" onClick={() => loadMatches(filterDate)} disabled={!filterDate}>
+          查询
+        </Button>
+        <Button variant="text" size="small" onClick={() => { setFilterDate(''); loadMatches(); }}>
+          清除筛选
+        </Button>
+      </Stack>
+
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       {matches.length === 0 && !loading && !error ? (
@@ -94,7 +118,7 @@ export const MatchList: React.FC = () => {
                   <Box>
                     <Typography variant="h6">
                       {new Date(match.match_date).toLocaleDateString('zh-CN', { weekday: 'long', month: 'long', day: 'numeric' })}
-                      {match.match_time && ` ${match.match_time.slice(0,5)}`}
+                      {match.match_time && ` ${match.match_time.slice(0, 5)}`}
                     </Typography>
                     <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                       <Chip size="small" label={match.format} color="primary" />
@@ -124,11 +148,17 @@ export const MatchList: React.FC = () => {
                       </Button>
                     )}
                     {isEditable && (
-                    <IconButton color="error" onClick={() => handleDelete(match.id)}>
-                      <Delete />
-                    </IconButton>
+                      <IconButton color="error" onClick={() => handleDelete(match.id)}>
+                        <Delete />
+                      </IconButton>
                     )}
                   </Box>
+                </Box>
+                <Divider sx={{ my: 1 }} />
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <Button variant="outlined" size="small" onClick={() => onSelectMatch?.(match.id)}>
+                    查看阵容
+                  </Button>
                 </Box>
               </CardContent>
             </Card>

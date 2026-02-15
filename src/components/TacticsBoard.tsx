@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'react';
-import { DndContext, DragOverlay, pointerWithin, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
+import { useState, useCallback, useEffect } from 'react';
+import { DndContext, DragOverlay, closestCenter, rectIntersection, useSensor, useSensors, PointerSensor, TouchSensor } from '@dnd-kit/core';
+import type { CollisionDetection } from '@dnd-kit/core';
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import {
   Box, Card, CardContent, Typography, ToggleButtonGroup, ToggleButton,
@@ -20,6 +21,41 @@ import { Bench } from './Bench';
 import { PlayerCard } from './PlayerCard';
 import { QuickImport } from './QuickImport';
 import { api } from '../services/api';
+import GK01 from '../assets/playerIcon/GK01.png';
+import GK02 from '../assets/playerIcon/GK02.png';
+import CB01 from '../assets/playerIcon/CB01.png';
+import CB02 from '../assets/playerIcon/CB02.png';
+import CB03 from '../assets/playerIcon/CB03.png';
+import LB01 from '../assets/playerIcon/LB01.png';
+import LB02 from '../assets/playerIcon/LB02.png';
+import RB01 from '../assets/playerIcon/RB01.png';
+import RB02 from '../assets/playerIcon/RB02.png';
+import CDM01 from '../assets/playerIcon/CDM01.png';
+import CDM02 from '../assets/playerIcon/CDM02.png';
+import CM01 from '../assets/playerIcon/CM01.png';
+import CM02 from '../assets/playerIcon/CM02.png';
+import CAM01 from '../assets/playerIcon/CAM01.png';
+import LM01 from '../assets/playerIcon/LM01.png';
+import RM01 from '../assets/playerIcon/RM01.png';
+import LW02 from '../assets/playerIcon/LW02.png';
+import ST01 from '../assets/playerIcon/ST01.png';
+import ST02 from '../assets/playerIcon/ST02.png';
+import ST03 from '../assets/playerIcon/ST03.png';
+import ST04 from '../assets/playerIcon/ST04.png';
+import ST05 from '../assets/playerIcon/ST05.png';
+import ST06 from '../assets/playerIcon/ST06.png';
+
+const POSITION_AVATARS: Record<string, string[]> = {
+  GK: [GK01, GK02],
+  DF: [CB01, CB02, CB03, LB01, LB02, RB01, RB02],
+  MF: [CDM01, CDM02, CM01, CM02, CAM01, LM01, RM01, LW02],
+  FW: [ST01, ST02, ST03, ST04, ST05, ST06],
+};
+
+const getPositionAvatar = (position: string, index: number): string => {
+  const avatars = POSITION_AVATARS[position] || POSITION_AVATARS.MF;
+  return avatars[index % avatars.length];
+};
 import { useAuthStore } from '../store/authStore';
 import { canEdit } from '../data/users';
 
@@ -34,7 +70,11 @@ interface PlayerMatchStats {
   isMVP: boolean;
 }
 
-export const TacticsBoard: React.FC = () => {
+interface TacticsBoardProps {
+  matchId?: number | null;
+}
+
+export const TacticsBoard: React.FC<TacticsBoardProps> = ({ matchId }) => {
   const currentUser = useAuthStore((s) => s.currentUser);
   const isEditable = currentUser ? canEdit(currentUser.role) : false;
 
@@ -49,9 +89,109 @@ export const TacticsBoard: React.FC = () => {
     switchFormat, autoArrangeLineup
   } = useGameStore();
 
+  // Load match data when matchId changes
+  useEffect(() => {
+    if (matchId) {
+      const loadMatchData = async () => {
+        try {
+          const matchData = await api.getMatch(matchId);
+          if (matchData) {
+            // Set match info
+            setMatchInfo({
+              date: matchData.match_date,
+              time: matchData.match_time || '',
+              location: matchData.location || ''
+            });
+
+            // Set generated state
+            setMatchGenerated(true, matchData.id);
+
+            // Reconstruct lineup/bench from registrations
+            if (matchData.registrations && matchData.registrations.length > 0) {
+              const fmt = matchData.format || '5v5';
+              const lineupSize = fmt === '5v5' ? 5 : fmt === '7v7' ? 7 : 11;
+              const newLineup: (Player | null)[] = Array(lineupSize).fill(null);
+              const newBench: Player[] = [];
+
+              // Track per-position avatar index to avoid duplicates
+              const posAvatarIdx: Record<string, number> = {};
+
+              // 先按 position_index 排序，首发排前面
+              const sorted = [...matchData.registrations].sort((a: any, b: any) => {
+                if (a.is_starter && !b.is_starter) return -1;
+                if (!a.is_starter && b.is_starter) return 1;
+                if (a.position_index != null && b.position_index != null) return a.position_index - b.position_index;
+                if (a.position_index != null) return -1;
+                if (b.position_index != null) return 1;
+                return 0;
+              });
+
+              sorted.forEach((reg: any) => {
+                const pos = reg.preferred_position || 'MF';
+                const avatarIdx = posAvatarIdx[pos] || 0;
+                posAvatarIdx[pos] = avatarIdx + 1;
+
+                const player: Player = {
+                  id: reg.player_id.toString(),
+                  name: reg.player_name || reg.name,
+                  avatar: getPositionAvatar(pos, avatarIdx),
+                  position: pos,
+                  preferredPosition: pos,
+                  rating: reg.rating || 75,
+                  rarity: 'silver',
+                  jerseyNumber: reg.position_index != null ? reg.position_index + 1 : avatarIdx + 1,
+                  stats: { pace: 70, shooting: 70, passing: 70, dribbling: 70, defense: 70, physical: 70 }
+                };
+
+                // 有 position_index 的放到对应位置，否则按顺序填
+                if (reg.is_starter && reg.position_index != null && reg.position_index < lineupSize) {
+                  newLineup[reg.position_index] = player;
+                } else if (reg.is_starter) {
+                  // 首发但没有具体位置，找第一个空位
+                  const emptyIdx = newLineup.findIndex(p => p === null);
+                  if (emptyIdx !== -1) {
+                    newLineup[emptyIdx] = player;
+                  } else {
+                    newBench.push(player);
+                  }
+                } else {
+                  newBench.push(player);
+                }
+              });
+
+              // 一次性原子更新所有状态
+              useGameStore.setState({
+                gameFormat: fmt as GameFormat,
+                selectedFormation: matchData.formation || Object.keys(FORMATIONS[fmt as GameFormat])[0],
+                lineup: newLineup,
+                bench: newBench,
+              });
+            } else {
+              useGameStore.setState({
+                gameFormat: (matchData.format || '5v5') as GameFormat,
+                selectedFormation: matchData.formation || '1-2-1',
+              });
+            }
+          }
+        } catch (error) {
+          console.error("Failed to load match data", error);
+        }
+      };
+      loadMatchData();
+    }
+  }, [matchId, setMatchInfo, setMatchGenerated, setLineup, setBench]);
+
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: isEditable ? 5 : Infinity } })
+    useSensor(PointerSensor, { activationConstraint: { distance: isEditable ? 3 : Infinity } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 8 } })
   );
+
+  // 自定义碰撞检测：先用 rectIntersection，没命中再用 closestCenter
+  const collisionDetection: CollisionDetection = useCallback((args) => {
+    const rectCollisions = rectIntersection(args);
+    if (rectCollisions.length > 0) return rectCollisions;
+    return closestCenter(args);
+  }, []);
   const [activePlayer, setActivePlayer] = useState<Player | null>(null);
   const [statsDialogOpen, setStatsDialogOpen] = useState(false);
   const [playerStats, setPlayerStats] = useState<PlayerMatchStats[]>([]);
@@ -168,14 +308,29 @@ export const TacticsBoard: React.FC = () => {
       });
 
       // Bulk import all players to DB and register to match
-      const playersToImport = allPlayers.map(p => ({
-        name: p.name,
-        preferred_position: p.preferredPosition || 'MF',
-        rating: p.rating || 75,
-      }));
+      // 首发球员带上位置索引
+      const playersToImport = [
+        ...lineup.map((p, i) => p ? ({
+          name: p.name,
+          preferred_position: p.preferredPosition || 'MF',
+          rating: p.rating || 75,
+          position_index: i,
+          is_starter: true,
+        }) : null).filter(Boolean),
+        ...bench.map(p => ({
+          name: p.name,
+          preferred_position: p.preferredPosition || 'MF',
+          rating: p.rating || 75,
+          position_index: null,
+          is_starter: false,
+        })),
+      ];
       if (playersToImport.length > 0) {
         await api.importPlayers(result.id, playersToImport);
       }
+
+      // 保存阵型到比赛记录
+      await api.updateMatch(result.id, { formation: selectedFormation } as any);
 
       setMatchGenerated(true, result.id);
       setSnackMsg('✅ 比赛已生成！球员已注册，可在比赛列表中查看');
@@ -266,7 +421,7 @@ export const TacticsBoard: React.FC = () => {
       sensors={sensors}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      collisionDetection={pointerWithin}
+      collisionDetection={collisionDetection}
     >
       <Box>
         {/* Read-only Alert */}
@@ -281,33 +436,33 @@ export const TacticsBoard: React.FC = () => {
           <Alert severity="info" sx={{ mb: 2 }}
             action={
               isEditable && (
-              <Stack direction="row" spacing={1}>
-                {!matchGenerated && (
-                  <Button
-                    size="small" variant="contained" color="success"
-                    startIcon={<AutoAwesome />}
-                    onClick={handleGenerateMatch}
-                    disabled={saving || allPlayers.length === 0}
-                  >
-                    一键生成比赛
-                  </Button>
-                )}
-                {matchGenerated && (
-                  <Button
-                    size="small" variant="contained" color="warning"
-                    startIcon={<Assessment />}
-                    onClick={handleOpenStats}
-                    disabled={lineupCount === 0}
-                  >
-                    赛后统计
-                  </Button>
-                )}
-              </Stack>
+                <Stack direction="row" spacing={1}>
+                  {!matchGenerated && (
+                    <Button
+                      size="small" variant="contained" color="success"
+                      startIcon={<AutoAwesome />}
+                      onClick={handleGenerateMatch}
+                      disabled={saving || allPlayers.length === 0}
+                    >
+                      一键生成比赛
+                    </Button>
+                  )}
+                  {matchGenerated && (
+                    <Button
+                      size="small" variant="contained" color="warning"
+                      startIcon={<Assessment />}
+                      onClick={handleOpenStats}
+                      disabled={lineupCount === 0}
+                    >
+                      赛后统计
+                    </Button>
+                  )}
+                </Stack>
               )
             }
           >
             <Stack direction="row" spacing={2} flexWrap="wrap" alignItems="center">
-              {matchInfo.date && <Chip icon={<Event />} label={`日期: ${matchInfo.date}`} size="small" />}
+              {matchInfo.date && <Chip icon={<Event />} label={`日期: ${matchInfo.date.split('T')[0]}`} size="small" />}
               {matchInfo.time && <Chip icon={<Event />} label={`时间: ${matchInfo.time}`} size="small" />}
               {matchInfo.location && <Chip icon={<LocationOn />} label={matchInfo.location} size="small" />}
               {matchGenerated && <Chip icon={<EmojiEvents />} label="比赛已生成" color="success" size="small" />}
@@ -350,21 +505,21 @@ export const TacticsBoard: React.FC = () => {
               </Box>
 
               {isEditable && (
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>快速操作</Typography>
-                <Stack direction="row" spacing={1}>
-                  <QuickImport onImport={handleImport} currentFormat={gameFormat} />
-                  {bench.length > 0 && lineup.some(p => !p) && (
-                    <Button
-                      variant="outlined" color="info" size="small"
-                      onClick={autoArrangeLineup}
-                      startIcon={<AutoAwesome />}
-                    >
-                      自动排列
-                    </Button>
-                  )}
-                </Stack>
-              </Box>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>快速操作</Typography>
+                  <Stack direction="row" spacing={1}>
+                    <QuickImport onImport={handleImport} currentFormat={gameFormat} />
+                    {bench.length > 0 && lineup.some(p => !p) && (
+                      <Button
+                        variant="outlined" color="info" size="small"
+                        onClick={autoArrangeLineup}
+                        startIcon={<AutoAwesome />}
+                      >
+                        自动排列
+                      </Button>
+                    )}
+                  </Stack>
+                </Box>
               )}
             </Stack>
           </CardContent>

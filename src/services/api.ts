@@ -48,8 +48,9 @@ export const api = {
   },
 
   // Matches
-  async getMatches(): Promise<MatchData[]> {
-    const res = await fetch(`${API_BASE}/matches`);
+  async getMatches(date?: string): Promise<MatchData[]> {
+    const url = date ? `${API_BASE}/matches?date=${date}` : `${API_BASE}/matches`;
+    const res = await fetch(url);
     return res.json();
   },
 

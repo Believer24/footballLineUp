@@ -1,25 +1,27 @@
 import { create } from 'zustand';
-import { USERS } from '../data/users';
-import type { User } from '../data/users';
+import type { UserRole } from '../data/users';
+
+export interface AuthUser {
+  id: number;
+  username: string;
+  displayName: string;
+  role: UserRole;
+}
 
 interface AuthState {
-  currentUser: User | null;
+  currentUser: AuthUser | null;
   isLoggedIn: boolean;
-  login: (username: string, password: string) => boolean;
+  login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
 }
 
 const STORAGE_KEY = 'footballLineUp_auth';
+const API_BASE = 'http://localhost:4000/api';
 
-const loadFromStorage = (): User | null => {
+const loadFromStorage = (): AuthUser | null => {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      // Verify the user still exists in our user list
-      const user = USERS.find(u => u.username === parsed.username && u.password === parsed.password);
-      return user || null;
-    }
+    if (saved) return JSON.parse(saved);
   } catch {
     // ignore
   }
@@ -31,14 +33,25 @@ export const useAuthStore = create<AuthState>((set) => {
   return {
     currentUser: savedUser,
     isLoggedIn: !!savedUser,
-    login: (username: string, password: string) => {
-      const user = USERS.find(u => u.username === username && u.password === password);
-      if (user) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ username: user.username, password: user.password }));
-        set({ currentUser: user, isLoggedIn: true });
-        return true;
+    login: async (username: string, password: string) => {
+      try {
+        const res = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+        if (!res.ok) return false;
+        const data = await res.json();
+        if (data.success && data.user) {
+          const user: AuthUser = data.user;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+          set({ currentUser: user, isLoggedIn: true });
+          return true;
+        }
+        return false;
+      } catch {
+        return false;
       }
-      return false;
     },
     logout: () => {
       localStorage.removeItem(STORAGE_KEY);

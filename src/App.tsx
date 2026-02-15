@@ -15,7 +15,13 @@ import './index.css';
 
 function App() {
   const [currentTab, setCurrentTab] = useState(0);
+  const [selectedMatchId, setSelectedMatchId] = useState<number | null>(null);
   const { isLoggedIn, currentUser, logout } = useAuthStore();
+
+  const handleSelectMatch = (id: number) => {
+    setSelectedMatchId(id);
+    setCurrentTab(2); // Switch to Tactics Board
+  };
 
   if (!isLoggedIn || !currentUser) {
     return (
@@ -68,9 +74,9 @@ function App() {
         </AppBar>
 
         <Container maxWidth="lg" sx={{ py: 3 }}>
-          {currentTab === 0 && <MatchList />}
+          {currentTab === 0 && <MatchList onSelectMatch={handleSelectMatch} />}
           {currentTab === 1 && <MatchManager />}
-          {currentTab === 2 && <TacticsBoard />}
+          {currentTab === 2 && <TacticsBoard matchId={selectedMatchId} />}
           {currentTab === 3 && <Leaderboard />}
         </Container>
       </Box>

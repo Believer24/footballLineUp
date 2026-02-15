@@ -200,3 +200,26 @@ INSERT INTO `players` VALUES (9, '熊智信', 'MF', 83, NULL, '2026-02-11 22:09:
 INSERT INTO `players` VALUES (10, '小泫冰', 'FW', 88, NULL, '2026-02-11 22:09:57');
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+-- ----------------------------
+-- Table structure for users
+-- ----------------------------
+DROP TABLE IF EXISTS `users`;
+CREATE TABLE `users` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `username` varchar(50) NOT NULL,
+  `password` varchar(100) NOT NULL,
+  `display_name` varchar(50) NOT NULL,
+  `role` enum('captain','manager','player') NOT NULL DEFAULT 'player',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_username` (`username`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ----------------------------
+-- Default user accounts
+-- ----------------------------
+INSERT INTO `users` VALUES (1, 'captain', '123456', '队长', 'captain', NOW());
+INSERT INTO `users` VALUES (2, 'manager', '123456', '领队', 'manager', NOW());
+INSERT INTO `users` VALUES (3, 'player1', '123456', '球员1', 'player', NOW());
+INSERT INTO `users` VALUES (4, 'player2', '123456', '球员2', 'player', NOW());

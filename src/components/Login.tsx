@@ -12,12 +12,16 @@ export const Login: React.FC = () => {
   const [error, setError] = useState('');
   const login = useAuthStore((s) => s.login);
 
-  const handleLogin = () => {
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
       setError('请输入用户名和密码');
       return;
     }
-    const success = login(username.trim(), password);
+    setLoading(true);
+    const success = await login(username.trim(), password);
+    setLoading(false);
     if (!success) {
       setError('用户名或密码错误');
     }
@@ -73,9 +77,10 @@ export const Login: React.FC = () => {
               size="large"
               startIcon={<LoginIcon />}
               onClick={handleLogin}
+              disabled={loading}
               sx={{ mt: 1 }}
             >
-              登录
+              {loading ? '登录中...' : '登录'}
             </Button>
           </Stack>
 

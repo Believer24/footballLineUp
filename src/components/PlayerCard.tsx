@@ -3,6 +3,52 @@ import { Card, CardContent, Typography, Box, Avatar, IconButton } from '@mui/mat
 import { Person, Flip } from '@mui/icons-material';
 import type { Player, CardRarity } from '../types';
 
+// 位置球星图片
+import GK01 from '../assets/playerIcon/GK01.png';
+import GK02 from '../assets/playerIcon/GK02.png';
+import CB01 from '../assets/playerIcon/CB01.png';
+import CB02 from '../assets/playerIcon/CB02.png';
+import CB03 from '../assets/playerIcon/CB03.png';
+import LB01 from '../assets/playerIcon/LB01.png';
+import LB02 from '../assets/playerIcon/LB02.png';
+import RB01 from '../assets/playerIcon/RB01.png';
+import RB02 from '../assets/playerIcon/RB02.png';
+import CDM01 from '../assets/playerIcon/CDM01.png';
+import CDM02 from '../assets/playerIcon/CDM02.png';
+import CM01 from '../assets/playerIcon/CM01.png';
+import CM02 from '../assets/playerIcon/CM02.png';
+import CAM01 from '../assets/playerIcon/CAM01.png';
+import LM01 from '../assets/playerIcon/LM01.png';
+import RM01 from '../assets/playerIcon/RM01.png';
+import LW02 from '../assets/playerIcon/LW02.png';
+import ST01 from '../assets/playerIcon/ST01.png';
+import ST02 from '../assets/playerIcon/ST02.png';
+import ST03 from '../assets/playerIcon/ST03.png';
+import ST04 from '../assets/playerIcon/ST04.png';
+import ST05 from '../assets/playerIcon/ST05.png';
+import ST06 from '../assets/playerIcon/ST06.png';
+
+const POSITION_AVATARS: Record<string, string[]> = {
+  GK: [GK01, GK02],
+  DF: [CB01, CB02, CB03, LB01, LB02, RB01, RB02],
+  MF: [CDM01, CDM02, CM01, CM02, CAM01, LM01, RM01, LW02],
+  FW: [ST01, ST02, ST03, ST04, ST05, ST06],
+  // 细分位置也映射
+  CB: [CB01, CB02, CB03], LB: [LB01, LB02], RB: [RB01, RB02],
+  CDM: [CDM01, CDM02], CM: [CM01, CM02], CAM: [CAM01],
+  LM: [LM01], RM: [RM01], LW: [LW02], RW: [LW02],
+  LWB: [LB01, LB02], RWB: [RB01, RB02],
+  ST: [ST01, ST02, ST03, ST04, ST05, ST06], CF: [ST01, ST02, ST03],
+};
+
+const getDefaultAvatar = (position: string, playerId: string): string => {
+  const avatars = POSITION_AVATARS[position] || POSITION_AVATARS.MF;
+  // 用 playerId 的 hash 来稳定分配，同一个球员每次都拿到同一张图
+  let hash = 0;
+  for (let i = 0; i < playerId.length; i++) hash = ((hash << 5) - hash + playerId.charCodeAt(i)) | 0;
+  return avatars[Math.abs(hash) % avatars.length];
+};
+
 interface PlayerCardProps {
   player: Player;
   size?: 'sm' | 'md' | 'lg';
@@ -44,6 +90,9 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
       setIsFlippedInternal(!isFlippedInternal);
     }
   };
+
+  const avatarSrc = getDefaultAvatar(player.position || player.preferredPosition || 'MF', player.id);
+  console.log('[PlayerCard]', player.name, 'pos=', player.position, 'avatar=', avatarSrc);
 
   return (
     <Box
@@ -116,7 +165,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
 
           <CardContent sx={{ p: 0.5, pt: 1.5, textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
             <Avatar
-              src={player.avatar}
+              src={avatarSrc}
               sx={{
                 width: config.avatarSize,
                 height: config.avatarSize,
@@ -126,7 +175,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
                 boxShadow: `0 0 10px ${rarityColor}55`,
               }}
             >
-              {!player.avatar && <Person sx={{ fontSize: config.avatarSize * 0.6 }} />}
+              <Person sx={{ fontSize: config.avatarSize * 0.6 }} />
             </Avatar>
 
             <Typography
