@@ -213,17 +213,18 @@ app.delete('/api/matches/:id/register/:playerId', async (req, res) => {
 // 录入/更新球员比赛数据
 app.post('/api/matches/:id/stats', async (req, res) => {
   try {
-    const { player_id, goals, assists, yellow_cards, red_cards, is_mvp } = req.body;
+    const { player_id, goals, assists, interceptions, yellow_cards, red_cards, is_mvp } = req.body;
     await pool.query(`
-      INSERT INTO match_stats (match_id, player_id, goals, assists, yellow_cards, red_cards, is_mvp)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO match_stats (match_id, player_id, goals, assists, interceptions, yellow_cards, red_cards, is_mvp)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
         goals = VALUES(goals),
         assists = VALUES(assists),
+        interceptions = VALUES(interceptions),
         yellow_cards = VALUES(yellow_cards),
         red_cards = VALUES(red_cards),
         is_mvp = VALUES(is_mvp)
-    `, [req.params.id, player_id, goals || 0, assists || 0, yellow_cards || 0, red_cards || 0, is_mvp || false]);
+    `, [req.params.id, player_id, goals || 0, assists || 0, interceptions || 0, yellow_cards || 0, red_cards || 0, is_mvp || false]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -299,15 +300,16 @@ app.post('/api/matches/:id/batch-stats', async (req, res) => {
       const playerId = existing[0].id;
 
       await pool.query(`
-        INSERT INTO match_stats (match_id, player_id, goals, assists, yellow_cards, red_cards, is_mvp)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO match_stats (match_id, player_id, goals, assists, interceptions, yellow_cards, red_cards, is_mvp)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
           goals = VALUES(goals),
           assists = VALUES(assists),
+          interceptions = VALUES(interceptions),
           yellow_cards = VALUES(yellow_cards),
           red_cards = VALUES(red_cards),
           is_mvp = VALUES(is_mvp)
-      `, [matchId, playerId, s.goals || 0, s.assists || 0, s.yellowCards || 0, s.redCards || 0, s.isMVP || false]);
+      `, [matchId, playerId, s.goals || 0, s.assists || 0, s.interceptions || 0, s.yellowCards || 0, s.redCards || 0, s.isMVP || false]);
     }
 
     res.json({ success: true });
@@ -323,6 +325,7 @@ app.get('/api/stats/leaderboard', async (req, res) => {
       SELECT p.id, p.name, p.preferred_position, p.rating,
         COALESCE(SUM(s.goals), 0) as total_goals,
         COALESCE(SUM(s.assists), 0) as total_assists,
+        COALESCE(SUM(s.interceptions), 0) as total_interceptions,
         COALESCE(SUM(s.yellow_cards), 0) as total_yellows,
         COALESCE(SUM(s.red_cards), 0) as total_reds,
         COALESCE(SUM(s.is_mvp), 0) as mvp_count,
@@ -339,7 +342,61 @@ app.get('/api/stats/leaderboard', async (req, res) => {
 });
 
 const PORT = 4000;
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`金龙球员花名册 API running on http://localhost:${PORT}`);
+});
+
+// ============ 地理编码 API ============
+// 使用免费的 Nominatim API (OpenStreetMap)
+const https = require('https');
+
+app.get('/api/geocode', async (req, res) => {
+  try {
+    const { address } = req.query;
+    if (!address) {
+      return res.status(400).json({ error: '请提供地址' });
+    }
+
+    const encodedAddress = encodeURIComponent(address);
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=1`;
+
+    const result = await new Promise((resolve, reject) => {
+      const req = https.get(url, {
+        headers: {
+          'User-Agent': 'FootballLineUp/1.0',
+          'Accept-Language': 'zh-CN,zh;q=0.9',
+        }
+      }, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+          try {
+            resolve(JSON.parse(data));
+          } catch (e) {
+            reject(e);
+          }
+        });
+      });
+      req.on('error', reject);
+      req.setTimeout(10000, () => {
+        req.destroy();
+        reject(new Error('请求超时'));
+      });
+    });
+
+    if (result && result.length > 0) {
+      res.json({
+        lat: parseFloat(result[0].lat),
+        lng: parseFloat(result[0].lon),
+      });
+    } else {
+      // 地址未找到时，直接打开系统地图
+      res.json({ lat: null, lng: null, error: '未找到坐标' });
+    }
+  } catch (err) {
+    console.error('Geocode error:', err.message);
+    // 返回错误但不让前端崩溃
+    res.json({ lat: null, lng: null, error: err.message });
+  }
 });
 

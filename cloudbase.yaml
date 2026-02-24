@@ -1,0 +1,35 @@
+# 微信云托管部署配置
+# 参考文档: https://docs.cloudbase.net/
+
+envId: ${ENV_ID}  # 环境ID，从云托管控制台获取
+
+services:
+  - name: football-api
+    # 容器镜像
+    image: football-api:latest
+    # 部署策略
+    deployType: container
+    # 端口
+    containerPort: 4000
+    # 环境变量
+    envVariables:
+      - key: DB_HOST
+        value: ${DB_HOST}
+      - key: DB_USER
+        value: ${DB_USER}
+      - key: DB_PASSWORD
+        value: ${DB_PASSWORD}
+      - key: DB_NAME
+        value: ${DB_NAME}
+      - key: PORT
+        value: "4000"
+    # 资源配置
+    cpu: 0.25
+    mem: 0.5
+    # 健康检查
+    healthCheck:
+      http:
+        path: /api/players
+        port: 4000
+    # 是否公开访问
+    isPublic: true
