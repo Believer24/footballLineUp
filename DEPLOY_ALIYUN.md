@@ -14,7 +14,7 @@
 
 ### 1. 购买并初始化 ECS
 
-- 推荐配置：2核 4G Ubuntu 20.04 LTS
+- 推荐配置：2核 4G（Alibaba Cloud Linux 3 / Ubuntu 20.04 LTS）
 - 记牢服务器的公网 IP 地址
 
 ### 2. 安全组配置
@@ -32,6 +32,8 @@
 
 ## 二、服务器环境搭建
 
+> **注意**：本指南适用于 Alibaba Cloud Linux 3 / Ubuntu / CentOS 系统
+
 ### 1. 连接服务器
 
 ```bash
@@ -40,8 +42,21 @@ ssh root@你的服务器IP
 
 ### 2. 安装 Node.js
 
+**Alibaba Cloud Linux 3 / CentOS / RHEL:**
+
 ```bash
 # 使用 NodeSource 仓库安装 Node.js 18
+curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo bash -
+sudo yum install -y nodejs
+
+# 验证安装
+node -v
+npm -v
+```
+
+**Ubuntu / Debian:**
+
+```bash
 curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
@@ -52,8 +67,23 @@ npm -v
 
 ### 3. 安装 MySQL
 
+**Alibaba Cloud Linux 3 / CentOS / RHEL:**
+
 ```bash
 # 安装 MySQL
+sudo yum install -y mysql-server
+
+# 启动 MySQL
+sudo systemctl start mysqld
+sudo systemctl enable mysqld
+
+# 安全配置
+sudo mysql_secure_installation
+```
+
+**Ubuntu / Debian:**
+
+```bash
 sudo apt update
 sudo apt install -y mysql-server
 
@@ -61,7 +91,7 @@ sudo apt install -y mysql-server
 sudo systemctl start mysql
 sudo systemctl enable mysql
 
-# 安全配置（设置 root 密码）
+# 安全配置
 sudo mysql_secure_installation
 ```
 
@@ -142,6 +172,14 @@ pm2 save
 如果需要 HTTPS，建议使用 Nginx 配置 SSL 证书。
 
 ### 1. 安装 Nginx
+
+**Alibaba Cloud Linux 3 / CentOS / RHEL:**
+
+```bash
+sudo yum install -y nginx
+```
+
+**Ubuntu / Debian:**
 
 ```bash
 sudo apt install -y nginx
