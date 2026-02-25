@@ -1,0 +1,58 @@
+import type { Player } from '../types';
+
+export const SAMPLE_PLAYERS: Player[] = [
+  {
+    id: 'player-1',
+    name: '张三',
+    position: 'ST',
+    preferredPosition: 'FW',
+    rating: 85,
+    rarity: 'gold',
+    stats: { pace: 88, shooting: 85, passing: 75, dribbling: 82, defense: 40, physical: 78 },
+  },
+  {
+    id: 'player-2',
+    name: '李四',
+    position: 'CM',
+    preferredPosition: 'MF',
+    rating: 82,
+    rarity: 'gold',
+    stats: { pace: 75, shooting: 70, passing: 85, dribbling: 80, defense: 72, physical: 75 },
+  },
+  {
+    id: 'player-3',
+    name: '王五',
+    position: 'CB',
+    preferredPosition: 'DF',
+    rating: 80,
+    rarity: 'silver',
+    stats: { pace: 65, shooting: 45, passing: 65, dribbling: 55, defense: 88, physical: 85 },
+  },
+  {
+    id: 'player-4',
+    name: '赵六',
+    position: 'GK',
+    preferredPosition: 'GK',
+    rating: 78,
+    rarity: 'silver',
+    stats: { pace: 50, shooting: 30, passing: 55, dribbling: 40, defense: 85, physical: 80 },
+  },
+  {
+    id: 'player-5',
+    name: '周七',
+    position: 'LW',
+    preferredPosition: 'FW',
+    rating: 83,
+    rarity: 'gold',
+    stats: { pace: 92, shooting: 78, passing: 72, dribbling: 88, defense: 35, physical: 65 },
+  },
+  {
+    id: 'player-6',
+    name: '吴八',
+    position: 'RB',
+    preferredPosition: 'DF',
+    rating: 76,
+    rarity: 'bronze',
+    stats: { pace: 78, shooting: 55, passing: 70, dribbling: 68, defense: 80, physical: 75 },
+  },
+];

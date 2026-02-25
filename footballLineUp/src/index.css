@@ -1,0 +1,138 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Roboto+Condensed:wght@300;400;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background-color: #0f172a;
+  color: #e2e8f0;
+  min-height: 100vh;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Neon text effect */
+.text-neon {
+  text-shadow: 0 0 10px rgba(0, 255, 157, 0.8),
+               0 0 20px rgba(0, 255, 157, 0.6),
+               0 0 30px rgba(0, 255, 157, 0.4);
+}
+
+/* Glass effect */
+.glass {
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Card border gradient */
+.card-border-gold {
+  background: linear-gradient(135deg, #ffd700, #b8860b, #8b6914);
+  padding: 2px;
+}
+
+.card-border-silver {
+  background: linear-gradient(135deg, #c0c0c0, #a8a8a8, #808080);
+  padding: 2px;
+}
+
+.card-border-bronze {
+  background: linear-gradient(135deg, #cd7f32, #8b4513, #654321);
+  padding: 2px;
+}
+
+/* Pitch grass pattern */
+.pitch-grass {
+  background: linear-gradient(90deg, 
+    #1a3d2e 0%, 
+    #1f4a38 25%, 
+    #1a3d2e 50%, 
+    #1f4a38 75%, 
+    #1a3d2e 100%);
+  background-size: 40px 100%;
+}
+
+/* Player card hexagon */
+.hexagon {
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+
+/* Shield shape */
+.shield {
+  clip-path: polygon(50% 0%, 100% 10%, 100% 70%, 50% 100%, 0% 70%, 0% 10%);
+}
+
+/* Dragging styles */
+.dragging {
+  opacity: 0.5;
+  transform: scale(1.05);
+}
+
+.drop-target {
+  border: 2px dashed #00ff9d;
+  background: rgba(0, 255, 157, 0.1);
+}
+
+/* Animation classes */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Tab indicator */
+.tab-indicator {
+  position: relative;
+}
+
+.tab-indicator::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #00ff9d, #00d4ff);
+  border-radius: 2px;
+}
+
+/* Radar chart custom styles */
+.recharts-polar-grid-angle line {
+  stroke: rgba(255, 255, 255, 0.1);
+}
+
+.recharts-polar-grid-concentric circle {
+  stroke: rgba(255, 255, 255, 0.1);
+}
